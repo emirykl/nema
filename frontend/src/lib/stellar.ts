@@ -142,6 +142,8 @@ const VAULT_ERRORS: Record<number, string> = {
   8: "The first deposit must be larger.",
   9: "You don't have that many nUSDT0.",
   10: "Not enough liquidity right now. Try a smaller amount.",
+  23: "A strategy isn't answering. It will be reported shortly; try again in a few minutes.",
+  24: "Deposits are closed while a strategy isn't answering. Withdrawals stay open.",
 };
 
 export function readableError(err: unknown): string {
@@ -149,6 +151,7 @@ export function readableError(err: unknown): string {
   const code = text.match(/Error\(Contract, #(\d+)\)/)?.[1];
   if (code && VAULT_ERRORS[Number(code)]) return VAULT_ERRORS[Number(code)]!;
   if (/trustline|TrustLine/i.test(text)) return "A trustline is missing. Complete the setup step first.";
+  if (/passphrase|wrong network|network mismatch|different network/i.test(text)) return "Your wallet is on a different network. Switch it to Testnet and try again.";
   if (/balance|underfunded/i.test(text)) return "Insufficient balance.";
   if (/reject|declin|denied|cancel/i.test(text)) return "Request cancelled in your wallet.";
   return "Something went wrong. Please try again.";
