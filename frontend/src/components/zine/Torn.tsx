@@ -6,6 +6,10 @@ import type { ComponentProps, CSSProperties, ReactNode } from "react";
  * section edges. Same seed, same tear, so server and client render alike.
  */
 
+/** Same noise as the `.grain` overlay in globals.css. */
+const NOISE =
+  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>";
+
 function rng(seed: number) {
   let s = seed >>> 0 || 1;
   return () => {
@@ -76,21 +80,60 @@ export function StickerLink({
   return <Link className={stickerClass(tone, className)} style={stickerStyle(seed, tilt)} {...props} />;
 }
 
-/** Ragged boundary between two sections, with a thin paper fringe. */
-export function TornEdge({ to, seed = 11, fringe = true, flip = false }: { to: string; seed?: number; fringe?: boolean; flip?: boolean }) {
+/**
+ * Ragged boundary between two sections, with a thin paper fringe. The tear is
+ * drawn twice side by side and drifts sideways like a slow swell; the two
+ * copies meet seamlessly, so the loop never jumps. Pass `grain` when the
+ * section below has the paper texture, so edge and section read as one piece.
+ */
+export function TornEdge({
+  to,
+  seed = 11,
+  fringe = true,
+  flip = false,
+  grain = false,
+}: {
+  to: string;
+  seed?: number;
+  fringe?: boolean;
+  flip?: boolean;
+  grain?: boolean;
+}) {
   const r = rng(seed);
   const n = 90;
-  const line = Array.from({ length: n + 1 }, (_, i) => `L${(i / n) * 1440} ${(10 + r() * 22).toFixed(1)}`).join(" ");
-  const d = `M0 40 ${line} L1440 40 Z`;
+  const ys = Array.from({ length: n }, () => (10 + r() * 22).toFixed(1));
+  // The last point repeats the first so tile edges line up.
+  const line = Array.from({ length: n + 1 }, (_, i) => `L${(i / n) * 1440} ${ys[i % n]}`).join(" ");
+  // Runs past the bottom edge so the swell never opens a gap above the next section.
+  const d = `M0 52 ${line} L1440 52 Z`;
+  const noiseId = `torn-noise-${seed}`;
+  const tile = (
+    <>
+      {fringe && <path d={d} transform="translate(0 -6)" fill="var(--paper)" />}
+      <path d={d} fill={to} />
+      {grain && <path d={d} fill={`url(#${noiseId})`} opacity={0.22} style={{ mixBlendMode: "multiply" }} />}
+    </>
+  );
   return (
     <svg
       viewBox="0 0 1440 40"
       preserveAspectRatio="none"
       aria-hidden
-      className={`pointer-events-none block h-6 w-full sm:h-9 ${flip ? "rotate-180" : ""}`}
+      className={`pointer-events-none -mb-px block h-6 w-full overflow-hidden sm:h-9 ${flip ? "rotate-180" : ""}`}
     >
-      {fringe && <path d={d} transform="translate(0 -6)" fill="var(--paper)" />}
-      <path d={d} fill={to} />
+      {grain && (
+        <defs>
+          <pattern id={noiseId} patternUnits="userSpaceOnUse" width={220} height={220}>
+            <image href={NOISE} width={220} height={220} />
+          </pattern>
+        </defs>
+      )}
+      <g className="wave-swell">
+        <g className="wave-drift" style={{ animationDuration: `${36 + (seed % 5) * 6}s` }}>
+          {tile}
+          <g transform="translate(1440 0)">{tile}</g>
+        </g>
+      </g>
     </svg>
   );
 }
