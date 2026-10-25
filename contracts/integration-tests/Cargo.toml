@@ -1,0 +1,17 @@
+[package]
+name = "nema-integration-tests"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+doctest = false
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+nema-interfaces = { workspace = true }
+nema-vault = { path = "../vault" }
+nema-strategy-xoxno = { path = "../strategy-xoxno" }
+nema-mock-lending = { path = "../mock-lending" }
+nema-mock-oracle = { path = "../mock-oracle" }
