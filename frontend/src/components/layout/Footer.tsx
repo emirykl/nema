@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { NemaFish } from "@/components/illustrations/NemaFish";
+import { NemaSquid } from "@/components/illustrations/NemaSquid";
+import { SeaFloor } from "./SeaFloor";
 
 export function Footer() {
   return (
     <footer className="bg-tape text-paper">
       <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-12 sm:px-8 md:flex-row md:items-center">
         <div className="flex items-center gap-3">
-          <NemaFish className="h-9 w-12" title="" />
+          <NemaSquid className="h-11 w-10" title="" />
           <span className="font-display text-[24px] uppercase">Nema</span>
           <span className="label text-[16px] text-paper/50">USDT0 yield vault on Stellar</span>
         </div>
@@ -22,9 +23,10 @@ export function Footer() {
           </a>
         </div>
       </div>
-      <p className="mx-auto max-w-7xl px-5 pb-10 text-[13px] text-paper/45 sm:px-8">
-        Testnet demo with mock USDT0. Not financial advice. Smart contracts are unaudited.
+      <p className="mx-auto max-w-7xl px-5 pb-10 font-display text-[18px] uppercase text-paper/70 sm:px-8 sm:text-[22px]">
+        Deposit. Chill. <span className="text-clown">The squid does the rest.</span>
       </p>
+      <SeaFloor />
     </footer>
   );
 }
