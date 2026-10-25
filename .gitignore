@@ -11,3 +11,6 @@ backend/data/
 
 # Local docs: never committed
 *.pdf
+
+# Filled-in SQL with secrets
+supabase/*.local.sql
