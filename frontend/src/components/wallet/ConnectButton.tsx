@@ -13,6 +13,8 @@ export function ConnectButton({
   variant?: "primary" | "secondary" | "ghost";
 }) {
   const { address, ready, connect, disconnect } = useWallet();
+  // The navbar size stays on one line on small phones.
+  const compact = size === "md" ? "whitespace-nowrap max-sm:!h-9 max-sm:!px-3 max-sm:!text-[13px]" : "";
   const [open, setOpen] = useState(false);
 
   if (!address) {
@@ -21,17 +23,33 @@ export function ConnectButton({
         size={size}
         variant={variant}
         seed={21}
+        className={compact}
         disabled={!ready}
         onClick={() => connect().catch(() => undefined)}
       >
-        Connect wallet
+        {size === "md" ? (
+          <>
+            <span className="max-[419px]:hidden">Connect wallet</span>
+            <span className="min-[420px]:hidden">Connect</span>
+          </>
+        ) : (
+          "Connect wallet"
+        )}
       </Button>
     );
   }
 
   return (
     <div className="relative">
-      <Button size={size} variant="ghost" seed={21} tilt={1.5} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+      <Button
+        size={size}
+        variant="ghost"
+        seed={21}
+        tilt={1.5}
+        className={compact}
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+      >
         <span className="h-2.5 w-2.5 rounded-full border-2 border-ink bg-emerald-400" />
         <span className="tabular">{shortAddress(address)}</span>
       </Button>
