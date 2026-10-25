@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { NemaFish } from "@/components/illustrations/NemaFish";
-import { ConnectButton } from "@/components/wallet/ConnectButton";
+import { NemaSquid } from "@/components/illustrations/NemaSquid";
 import { MobileMenu } from "./MobileMenu";
+import { NavAction } from "./NavAction";
 
 export const NAV_LINKS = [
   { href: "/app", label: "The Vault" },
@@ -14,7 +14,7 @@ export function Nav() {
     <header className="grain relative z-40 bg-ocean">
       <nav className="mx-auto flex h-20 max-w-7xl items-center gap-8 px-5 sm:px-8">
         <Link href="/" className="flex items-center gap-2" aria-label="Nema home">
-          <NemaFish className="h-9 w-12" title="" />
+          <NemaSquid className="h-11 w-10" title="" />
           <span className="font-display text-[26px] uppercase leading-none text-paper [text-shadow:0_3px_0_var(--tape)]">
             Nema
           </span>
@@ -27,7 +27,7 @@ export function Nav() {
           ))}
         </div>
         <div className="ml-auto flex items-center gap-3 md:ml-0">
-          <ConnectButton />
+          <NavAction />
           <MobileMenu links={NAV_LINKS} />
         </div>
       </nav>
