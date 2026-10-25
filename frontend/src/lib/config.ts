@@ -1,7 +1,8 @@
 import deployment from "@/config/deployment.json";
 
 export const config = {
-  apiUrl: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8787",
+  /** Same origin by default: the API lives in this Next.js app under /api. */
+  apiUrl: process.env.NEXT_PUBLIC_API_URL ?? "",
   ...deployment,
 };
 

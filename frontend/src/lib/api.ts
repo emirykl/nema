@@ -43,6 +43,8 @@ export interface VaultState {
   bufferBps: number;
   strategies: StrategyState[];
   netAprBps: number;
+  /** Strategies written down because they stopped answering (v2 vaults). */
+  impaired?: string[];
   realizedApy: number | null;
   updatedAt: string;
 }
@@ -60,6 +62,15 @@ export interface VaultEvent {
   data: { assets?: string; shares?: string };
   txHash: string;
   at: string;
+}
+
+export interface PositionSummary {
+  deposited: string;
+  withdrawn: string;
+  sharesIn: string;
+  sharesOut: string;
+  firstAt: string | null;
+  events: VaultEvent[];
 }
 
 export class ApiError extends Error {
@@ -88,9 +99,11 @@ export function useApi<T>(path: string | null, refreshMs = 0) {
   const [error, setError] = useState<Error>();
   const alive = useRef(true);
 
-  const load = useCallback((): Promise<void> => {
-    if (!path) return Promise.resolve();
-    return api<T>(path).then(
+  /** Loads `path`, or a one-off `override` (e.g. a cache-busting variant) into the same state. */
+  const load = useCallback((override?: string): Promise<void> => {
+    const target = override ?? path;
+    if (!target) return Promise.resolve();
+    return api<T>(target).then(
       (next) => {
         if (!alive.current) return;
         setData(next);
@@ -105,10 +118,16 @@ export function useApi<T>(path: string | null, refreshMs = 0) {
   useEffect(() => {
     alive.current = true;
     load();
-    const timer = refreshMs > 0 ? setInterval(load, refreshMs) : undefined;
+    // Background tabs stop polling, so idle visitors cost no requests.
+    const poll = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    const timer = refreshMs > 0 ? setInterval(poll, refreshMs) : undefined;
+    document.addEventListener("visibilitychange", poll);
     return () => {
       alive.current = false;
       clearInterval(timer);
+      document.removeEventListener("visibilitychange", poll);
     };
   }, [load, refreshMs]);
 
