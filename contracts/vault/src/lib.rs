@@ -14,6 +14,9 @@
 //!   No admin path transfers user funds anywhere except into strategies that
 //!   survived the timelock, or back to the vault.
 //! - `withdraw` is never gated by pause or the peg guard.
+//! - A strategy that stops answering (paused, broken upgrade) can be reported
+//!   by anyone; it is then valued at zero and skipped, so withdrawals of the
+//!   cash the vault still holds keep working. It counts again once it answers.
 //! - `harvest`, `rebalance` and `claim_fees` are permissionless; outcomes are
 //!   fully determined by on-chain state.
 
@@ -99,6 +102,11 @@ impl NemaVault {
         if guard::is_tripped(&env) {
             return Err(VaultError::GuardTripped);
         }
+        // A written-down strategy would let new money buy shares cheaply and
+        // collect the recovery; no deposits until it is restored.
+        if !storage::impaired(&env).is_empty() {
+            return Err(VaultError::StrategyImpaired);
+        }
 
         let (total_assets, total_shares) = accrue(&env)?;
         let vault = env.current_contract_address();
@@ -183,6 +191,9 @@ impl NemaVault {
     pub fn rebalance(env: Env, strategy: Address) -> Result<i128, VaultError> {
         storage::extend_instance(&env);
         let (_, info) = find_strategy(&env, &strategy)?;
+        if storage::is_impaired(&env, &strategy) {
+            return Err(VaultError::StrategyImpaired);
+        }
         let client = StrategyClient::new(&env, &strategy);
         let vault = env.current_contract_address();
 
@@ -219,6 +230,43 @@ impl NemaVault {
             .publish(&env);
         }
         Ok(delta)
+    }
+
+    /// Marks a strategy that no longer answers as impaired. Anyone may call;
+    /// it only succeeds if the strategy's `balance` actually fails right now,
+    /// so a healthy strategy can't be written down. While impaired, the
+    /// strategy is valued at zero, deposits are closed and withdrawals pay out
+    /// of the cash the vault holds.
+    pub fn report_unavailable(env: Env, strategy: Address) -> Result<(), VaultError> {
+        storage::extend_instance(&env);
+        find_strategy(&env, &strategy)?;
+        if storage::is_impaired(&env, &strategy) {
+            return Ok(());
+        }
+        if strategy_balance(&env, &strategy).is_ok() {
+            return Err(VaultError::StrategyHealthy);
+        }
+        let mut list = storage::impaired(&env);
+        list.push_back(strategy.clone());
+        storage::set_impaired(&env, &list);
+        StrategyImpaired { strategy }.publish(&env);
+        Ok(())
+    }
+
+    /// Counts an impaired strategy again once it answers. Anyone may call.
+    /// The high-water mark was never lowered for the write-down, so the
+    /// recovery is not charged a performance fee.
+    pub fn restore_strategy(env: Env, strategy: Address) -> Result<(), VaultError> {
+        storage::extend_instance(&env);
+        let mut list = storage::impaired(&env);
+        let Some(index) = list.first_index_of(&strategy) else {
+            return Err(VaultError::StrategyNotFound);
+        };
+        strategy_balance(&env, &strategy)?;
+        list.remove(index);
+        storage::set_impaired(&env, &list);
+        StrategyRestored { strategy }.publish(&env);
+        Ok(())
     }
 
     /// Sends accrued fee shares to the fee recipient.
@@ -313,14 +361,23 @@ impl NemaVault {
         require_admin(&env);
         storage::extend_instance(&env);
         let (index, _) = find_strategy(&env, &strategy)?;
-        let client = StrategyClient::new(&env, &strategy);
 
-        let balance = client.balance();
-        if balance > 0 {
-            client.withdraw(&balance, &env.current_contract_address());
-        }
-        if client.balance() > 0 {
-            return Err(VaultError::StrategyNotEmpty);
+        // An impaired strategy can't be emptied; dropping it from the list
+        // moves nothing, and re-adding it later (behind the timelock)
+        // recovers whatever it still holds.
+        let mut impaired = storage::impaired(&env);
+        if let Some(i) = impaired.first_index_of(&strategy) {
+            impaired.remove(i);
+            storage::set_impaired(&env, &impaired);
+        } else {
+            let client = StrategyClient::new(&env, &strategy);
+            let balance = client.balance();
+            if balance > 0 {
+                client.withdraw(&balance, &env.current_contract_address());
+            }
+            if client.balance() > 0 {
+                return Err(VaultError::StrategyNotEmpty);
+            }
         }
 
         let mut list = storage::strategies(&env);
@@ -489,6 +546,10 @@ impl NemaVault {
         storage::guard(&env)
     }
 
+    pub fn impaired_strategies(env: Env) -> Vec<Address> {
+        storage::impaired(&env)
+    }
+
     pub fn guard_status(env: Env) -> GuardStatus {
         guard::status(&env)
     }
@@ -556,11 +617,24 @@ fn idle_assets(env: &Env) -> i128 {
     asset_client(env).balance(&env.current_contract_address())
 }
 
+/// A strategy's balance, without letting a failing strategy abort the caller.
+fn strategy_balance(env: &Env, strategy: &Address) -> Result<i128, VaultError> {
+    match StrategyClient::new(env, strategy).try_balance() {
+        Ok(Ok(balance)) => Ok(balance),
+        _ => Err(VaultError::StrategyUnavailable),
+    }
+}
+
+/// Idle cash plus every strategy that still answers. Impaired strategies
+/// count as zero; a strategy that fails without having been reported stops
+/// the call, so shares are never priced on a guess.
 fn total_assets(env: &Env) -> Result<i128, VaultError> {
+    let impaired = storage::impaired(env);
     storage::strategies(env)
         .iter()
+        .filter(|s| !impaired.contains(&s.address))
         .try_fold(idle_assets(env), |acc, s| {
-            acc.checked_add(StrategyClient::new(env, &s.address).balance())
+            acc.checked_add(strategy_balance(env, &s.address)?)
                 .ok_or(VaultError::ArithmeticOverflow)
         })
 }
@@ -610,14 +684,21 @@ fn ensure_liquidity(env: &Env, needed: i128) -> Result<(), VaultError> {
     let vault = env.current_contract_address();
     let mut shortfall = needed - idle_assets(env);
 
+    let impaired = storage::impaired(env);
     for info in storage::strategies(env).iter() {
         if shortfall <= 0 {
             break;
         }
+        if impaired.contains(&info.address) {
+            continue;
+        }
         let client = StrategyClient::new(env, &info.address);
-        let request = shortfall.min(client.balance());
+        let request = shortfall.min(strategy_balance(env, &info.address).unwrap_or(0));
+        // A strategy that can't pay right now is skipped, not fatal.
         if request > 0 {
-            shortfall -= client.withdraw(&request, &vault);
+            if let Ok(Ok(paid)) = client.try_withdraw(&request, &vault) {
+                shortfall -= paid;
+            }
         }
     }
 

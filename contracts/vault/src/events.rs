@@ -98,3 +98,17 @@ pub struct ConfigChanged {
 pub struct AdminChanged {
     pub admin: Address,
 }
+
+#[contractevent(topics = ["strategy_impaired"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct StrategyImpaired {
+    #[topic]
+    pub strategy: Address,
+}
+
+#[contractevent(topics = ["strategy_restored"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct StrategyRestored {
+    #[topic]
+    pub strategy: Address,
+}

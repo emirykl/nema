@@ -26,4 +26,10 @@ pub enum VaultError {
     StrategyNotEmpty = 20,
     NoPendingAdmin = 21,
     NothingToClaim = 22,
+    /// A strategy did not answer; until it is reported, the vault can't price shares.
+    StrategyUnavailable = 23,
+    /// Deposits and allocations are off while a strategy is impaired.
+    StrategyImpaired = 24,
+    /// The strategy answers normally, so it can't be reported as unavailable.
+    StrategyHealthy = 25,
 }

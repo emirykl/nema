@@ -27,6 +27,7 @@ enum DataKey {
     Strategies,
     Pending(Address),
     Guard,
+    Impaired,
 }
 
 #[contracttype]
@@ -148,4 +149,21 @@ pub fn set_guard(env: &Env, value: Option<&GuardConfig>) {
         Some(g) => env.storage().instance().set(&DataKey::Guard, g),
         None => env.storage().instance().remove(&DataKey::Guard),
     }
+}
+
+/// Strategies that stopped answering. They are valued at zero and skipped
+/// until someone shows they answer again (see `NemaVault::report_unavailable`).
+pub fn impaired(env: &Env) -> Vec<Address> {
+    env.storage()
+        .instance()
+        .get(&DataKey::Impaired)
+        .unwrap_or_else(|| Vec::new(env))
+}
+
+pub fn set_impaired(env: &Env, value: &Vec<Address>) {
+    env.storage().instance().set(&DataKey::Impaired, value);
+}
+
+pub fn is_impaired(env: &Env, strategy: &Address) -> bool {
+    impaired(env).contains(strategy)
 }

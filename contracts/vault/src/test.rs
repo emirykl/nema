@@ -24,6 +24,7 @@ const TIMELOCK: u64 = 3_600;
 enum Key {
     Vault,
     Asset,
+    Broken,
 }
 
 #[contract]
@@ -34,6 +35,18 @@ impl HoldStrategy {
     pub fn __constructor(env: Env, vault: Address, asset: Address) {
         env.storage().instance().set(&Key::Vault, &vault);
         env.storage().instance().set(&Key::Asset, &asset);
+    }
+
+    /// Simulates the underlying protocol being paused or broken by an
+    /// upgrade: every balance and withdraw call fails.
+    pub fn set_broken(env: Env, broken: bool) {
+        env.storage().instance().set(&Key::Broken, &broken);
+    }
+}
+
+fn assert_working(env: &Env) {
+    if env.storage().instance().get(&Key::Broken).unwrap_or(false) {
+        panic!("strategy unavailable");
     }
 }
 
@@ -48,6 +61,7 @@ impl Strategy for HoldStrategy {
     }
 
     fn balance(env: Env) -> i128 {
+        assert_working(&env);
         TokenClient::new(&env, &Self::asset(env.clone())).balance(&env.current_contract_address())
     }
 
@@ -57,6 +71,7 @@ impl Strategy for HoldStrategy {
 
     fn withdraw(env: Env, amount: i128, to: Address) -> i128 {
         Self::vault(env.clone()).require_auth();
+        assert_working(&env);
         let amount = amount.min(Self::balance(env.clone()));
         TokenClient::new(&env, &Self::asset(env.clone())).transfer(&env.current_contract_address(), &to, &amount);
         amount
@@ -508,6 +523,106 @@ fn removing_a_strategy_returns_its_funds_to_the_vault() {
     assert_eq!(f.vault.strategies().len(), 0);
     assert_eq!(f.vault.idle_assets(), 100 * UNIT);
     assert_eq!(f.vault.total_assets(), 100 * UNIT);
+}
+
+// -------------------------------------------------------------------------
+// A strategy that stops answering (protocol paused, broken upgrade)
+// -------------------------------------------------------------------------
+
+/// Deposits 100, sends 90 to the strategy, then breaks it.
+fn broken_strategy_fixture() -> (Fixture, Address, Address, i128) {
+    let f = Fixture::new();
+    let strategy = f.add_strategy(9_000);
+    let user = f.user(200 * UNIT);
+    let shares = f.vault.deposit(&user, &(100 * UNIT), &0);
+    f.vault.rebalance(&strategy);
+    HoldStrategyClient::new(&f.env, &strategy).set_broken(&true);
+    (f, strategy, user, shares)
+}
+
+#[test]
+fn unavailable_strategy_can_be_reported_and_withdrawals_reopen() {
+    let (f, strategy, user, shares) = broken_strategy_fixture();
+
+    // Before anyone reports it, the vault refuses to price shares on a guess.
+    assert_eq!(
+        f.vault.try_withdraw(&user, &shares, &0),
+        Err(Ok(VaultError::StrategyUnavailable))
+    );
+
+    // Anyone can report it; the vault checks the failure itself.
+    f.vault.report_unavailable(&strategy);
+    assert_eq!(f.vault.impaired_strategies().len(), 1);
+    assert_eq!(f.vault.total_assets(), 10 * UNIT);
+
+    // Withdrawals pay out of the cash the vault still holds, pro rata.
+    let out = f.vault.withdraw(&user, &shares, &0);
+    assert!(out > 9 * UNIT && out <= 10 * UNIT, "got {out}");
+    assert_eq!(f.asset.balance(&strategy), 90 * UNIT, "the stuck funds stay put, not lost");
+
+    // New money can't buy in at the written-down price.
+    assert_eq!(
+        f.vault.try_deposit(&user, &(10 * UNIT), &0),
+        Err(Ok(VaultError::StrategyImpaired))
+    );
+}
+
+#[test]
+fn healthy_strategy_cannot_be_reported() {
+    let f = Fixture::new();
+    let strategy = f.add_strategy(9_000);
+    let user = f.user(100 * UNIT);
+    f.vault.deposit(&user, &(100 * UNIT), &0);
+    f.vault.rebalance(&strategy);
+
+    assert_eq!(
+        f.vault.try_report_unavailable(&strategy),
+        Err(Ok(VaultError::StrategyHealthy))
+    );
+    assert_eq!(f.vault.total_assets(), 100 * UNIT);
+}
+
+#[test]
+fn restored_strategy_counts_again_and_recovery_is_not_charged() {
+    let (f, strategy, user, _) = broken_strategy_fixture();
+    f.vault.report_unavailable(&strategy);
+    let price_down = f.vault.share_price();
+
+    // Still broken: it can't be restored.
+    assert_eq!(
+        f.vault.try_restore_strategy(&strategy),
+        Err(Ok(VaultError::StrategyUnavailable))
+    );
+
+    HoldStrategyClient::new(&f.env, &strategy).set_broken(&false);
+    f.vault.restore_strategy(&strategy);
+    assert_eq!(f.vault.impaired_strategies().len(), 0);
+    assert_eq!(f.vault.total_assets(), 100 * UNIT);
+    assert!(f.vault.share_price() > price_down);
+
+    // Getting back to the previous high is not profit, so no fee.
+    assert_eq!(f.vault.harvest(), 0);
+    // And deposits are open again.
+    f.vault.deposit(&user, &(10 * UNIT), &0);
+}
+
+#[test]
+fn rebalance_refuses_an_impaired_strategy() {
+    let (f, strategy, _, _) = broken_strategy_fixture();
+    f.vault.report_unavailable(&strategy);
+    assert_eq!(f.vault.try_rebalance(&strategy), Err(Ok(VaultError::StrategyImpaired)));
+}
+
+#[test]
+fn admin_can_drop_an_impaired_strategy_without_moving_funds() {
+    let (f, strategy, _, _) = broken_strategy_fixture();
+    f.vault.report_unavailable(&strategy);
+
+    f.vault.remove_strategy(&strategy);
+    assert_eq!(f.vault.strategies().len(), 0);
+    assert_eq!(f.vault.impaired_strategies().len(), 0);
+    assert_eq!(f.asset.balance(&strategy), 90 * UNIT);
+    assert_eq!(f.vault.total_assets(), 10 * UNIT);
 }
 
 // -------------------------------------------------------------------------
