@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.next/
+dist/
+target/
+test_snapshots/
+backend/data/
+.DS_Store
+
+# Local docs: never committed
+*.pdf
