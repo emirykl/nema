@@ -20,7 +20,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${inter.variable} ${comic.variable} ${barlow.variable}`}>
+    <html lang="en" data-scroll-behavior="smooth" className={`${inter.variable} ${comic.variable} ${barlow.variable}`}>
       <body className="flex min-h-dvh flex-col">
         <WalletProvider>
           <Nav />

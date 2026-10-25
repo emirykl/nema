@@ -54,6 +54,13 @@ html {
   color: var(--text);
   -webkit-font-smoothing: antialiased;
   color-scheme: light;
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 body {
@@ -172,6 +179,221 @@ body {
   }
 }
 
+/* Squid arms around a button (TentacleWrap): partly wrapped, all the way on hover. */
+.tentacle path {
+  stroke-dasharray: 1;
+  transition: stroke-dashoffset 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.tentacle-inner path {
+  stroke-dashoffset: 0.4;
+}
+.tentacle-outer path {
+  stroke-dashoffset: 0.6;
+  transition-delay: 0.08s;
+}
+.tentacle-wrap:hover .tentacle path,
+.tentacle-wrap:focus-within .tentacle path {
+  stroke-dashoffset: 0;
+}
+.tentacle-head {
+  transition:
+    rotate 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
+    scale 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* rotate/scale, not transform: Tailwind's centring uses the translate property. */
+.tentacle-wrap:hover .tentacle-head {
+  rotate: -6deg;
+  scale: 1.08;
+}
+/* Star eyes on hover; regular pupils otherwise. */
+.squid-star,
+.squid-pupil {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    opacity 0.25s,
+    transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.squid-star {
+  opacity: 0;
+  transform: scale(0.3) rotate(-30deg);
+}
+.tentacle-wrap:hover .squid-star,
+.tentacle-wrap:focus-within .squid-star {
+  opacity: 1;
+  transform: none;
+}
+.tentacle-wrap:hover .squid-pupil,
+.tentacle-wrap:focus-within .squid-pupil {
+  opacity: 0;
+}
+
+/* Squid arms gripping the deposit/withdraw button (TentacleGrip): hidden at rest.
+   Reaching in: the part behind the button grows first, then the tip curls over
+   the edge. Letting go runs the other way round. */
+.grip-arm path {
+  /* Long gap so no part of the next dash ever peeks in at the path's end. */
+  stroke-dasharray: 1 3;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.grip-back path {
+  transition-delay: 0.2s;
+}
+.tentacle-grip:hover:not(:has(:disabled)) .grip-arm path,
+.tentacle-grip:focus-within:not(:has(:disabled)) .grip-arm path {
+  stroke-dashoffset: 0;
+  transition-duration: 0.3s;
+}
+.tentacle-grip:hover:not(:has(:disabled)) .grip-back path,
+.tentacle-grip:focus-within:not(:has(:disabled)) .grip-back path {
+  transition-delay: 0s;
+}
+.tentacle-grip:hover:not(:has(:disabled)) .grip-front path,
+.tentacle-grip:focus-within:not(:has(:disabled)) .grip-front path {
+  transition-delay: 0.25s;
+}
+/* The rounded tip and the suckers appear once the arm has curled onto the face. */
+.grip-suckers,
+.grip-tip {
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.tentacle-grip:hover:not(:has(:disabled)) .grip-suckers,
+.tentacle-grip:focus-within:not(:has(:disabled)) .grip-suckers,
+.tentacle-grip:hover:not(:has(:disabled)) .grip-tip,
+.tentacle-grip:focus-within:not(:has(:disabled)) .grip-tip {
+  opacity: 1;
+  transition: opacity 0.2s 0.45s;
+}
+/* The arms are the hover effect; the sticker itself stays still. */
+.tentacle-grip .sticker:hover {
+  transform: rotate(var(--tilt, -2deg));
+  filter: drop-shadow(3px 4px 0 rgb(8 22 52 / 0.55));
+}
+
+/* Vault card scene (VaultScene): bubbles, seaweed, light, a bobbing squid, the chest lid. */
+@keyframes scene-bubble {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(-170px);
+    opacity: 0;
+  }
+}
+@keyframes scene-sway {
+  0%,
+  100% {
+    transform: rotate(-5deg);
+  }
+  50% {
+    transform: rotate(5deg);
+  }
+}
+@keyframes scene-rays {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+@keyframes scene-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+@keyframes scene-wobble {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+.scene-bubble {
+  animation: scene-bubble 6s ease-in infinite;
+}
+.scene-sway {
+  animation: scene-sway 4s ease-in-out infinite;
+}
+.scene-rays {
+  animation: scene-rays 7s ease-in-out infinite;
+}
+.scene-bob {
+  animation: scene-bob 3.2s ease-in-out infinite;
+}
+.scene-wobble {
+  animation: scene-wobble 0.35s ease-in-out infinite;
+}
+/* The lid stands open; it shuts while a transaction is in flight. */
+.scene-lid {
+  transform: rotate(24deg);
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.scene-wobble .scene-lid {
+  transform: rotate(3deg);
+}
+/* Squid star eyes after a transaction lands (TentacleWrap uses hover instead). */
+.squid-celebrate .squid-star {
+  opacity: 1;
+  transform: none;
+}
+.squid-celebrate .squid-pupil {
+  opacity: 0;
+}
+
+/* Fish crossing the sea floor under the footer (SeaFloor). */
+@keyframes fish-swim {
+  from {
+    transform: translateX(-80px);
+  }
+  to {
+    transform: translateX(1520px);
+  }
+}
+.fish-swim {
+  animation: fish-swim 28s linear infinite;
+}
+.fish-swim-left {
+  animation: fish-swim 28s linear infinite reverse;
+}
+
+/* Torn section edges drift like a slow swell (see TornEdge). */
+@keyframes wave-drift {
+  to {
+    transform: translateX(-1440px);
+  }
+}
+
+@keyframes wave-swell {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+.wave-drift {
+  animation: wave-drift 40s linear infinite;
+}
+.wave-swell {
+  animation: wave-swell 5s ease-in-out infinite;
+}
+
 .animate-bob {
   animation: bob 6s ease-in-out infinite;
   transform-origin: 50% 80%;
@@ -182,7 +404,16 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-bob,
-  .animate-rise {
+  .animate-rise,
+  .wave-drift,
+  .wave-swell,
+  .scene-bubble,
+  .scene-sway,
+  .scene-rays,
+  .scene-bob,
+  .scene-wobble,
+  .fish-swim,
+  .fish-swim-left {
     animation: none;
   }
   .sticker {
