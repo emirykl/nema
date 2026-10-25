@@ -1,4 +1,4 @@
-import { NemaFish } from "@/components/illustrations/NemaFish";
+import { NemaSquid } from "@/components/illustrations/NemaSquid";
 import { ButtonLink } from "@/components/ui/Button";
 import { Tape, TornEdge } from "@/components/zine/Torn";
 
@@ -49,7 +49,7 @@ export function Hero() {
 
         <div className="relative mx-auto w-[min(78vw,460px)] lg:w-full lg:max-w-[520px]">
           <div className="absolute inset-[12%_6%_4%_10%] -z-10 rounded-full bg-paper/15 blur-2xl" />
-          <NemaFish umbrella className="animate-bob w-full drop-shadow-[8px_10px_0_rgb(8_22_52/0.45)]" />
+          <NemaSquid umbrella title="Nema the squid" className="animate-bob w-full drop-shadow-[8px_10px_0_rgb(8_22_52/0.45)]" />
         </div>
       </div>
 
