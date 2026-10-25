@@ -6,18 +6,19 @@ import { Tape, TornEdge } from "@/components/zine/Torn";
 export function PageHeader({ kicker, title, children }: { kicker: string; title: string; children?: ReactNode }) {
   return (
     <section className="grain bg-ocean">
-      <div className="mx-auto max-w-7xl px-5 pb-12 pt-6 sm:px-8 sm:pb-16 sm:pt-10">
+      <div className="mx-auto max-w-7xl px-5 pb-6 pt-4 sm:px-8 sm:pb-8 sm:pt-6">
         <p className="font-display text-[18px] uppercase text-ink sm:text-[22px]">
           <Caps>{kicker}</Caps>
         </p>
         <h1 className="mt-3">
           <Tape seed={52} tilt={-1}>
-            <span className="block px-5 py-2 font-display text-[52px] uppercase leading-[0.95] text-ocean sm:px-7 sm:py-3 sm:text-[88px]">
+            {/* Fluid size: long titles like "Transparency" fit from 360px phones up. */}
+            <span className="block px-3 py-2 font-display text-[clamp(28px,8.6vw,88px)] uppercase leading-[0.95] text-ocean sm:px-7 sm:py-3">
               {title}
             </span>
           </Tape>
         </h1>
-        {children && <div className="mt-6">{children}</div>}
+        {children && <div className="mt-4">{children}</div>}
       </div>
       <TornEdge to="var(--paper)" seed={61} fringe={false} />
     </section>

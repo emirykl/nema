@@ -6,24 +6,50 @@ export function Card({ className = "", ...props }: ComponentProps<"div">) {
   return <div className={`paper-card ${className}`} {...props} />;
 }
 
+/** Small "?" that reveals `children` on hover, or on tap/focus on touch screens. */
+export function InfoTip({ children, align = "left" }: { children: ReactNode; align?: "left" | "right" }) {
+  return (
+    <span className="group relative inline-flex">
+      <button
+        type="button"
+        aria-label="More info"
+        className="grid h-[18px] w-[18px] place-items-center rounded-full border-2 border-current text-[11px] font-bold leading-none opacity-60 transition hover:opacity-100 focus-visible:opacity-100"
+      >
+        ?
+      </button>
+      <span
+        role="tooltip"
+        className={`pointer-events-none absolute top-full z-20 mt-2 hidden w-60 max-w-[calc(100vw-2.5rem)] rounded-[4px] border-2 border-ink bg-navy px-3 py-2 text-left text-[13px] font-normal normal-case leading-snug tracking-normal text-paper shadow-[4px_4px_0_var(--ink)] group-hover:block group-focus-within:block ${
+          align === "right" ? "right-0" : "left-0"
+        }`}
+        style={{ fontFamily: "var(--font-sans)" }}
+      >
+        {children}
+      </span>
+    </span>
+  );
+}
+
 export function Stat({
   label,
   value,
-  hint,
+  info,
+  infoAlign,
   className = "",
 }: {
   label: string;
   value: ReactNode;
-  hint?: ReactNode;
+  info?: ReactNode;
+  infoAlign?: "left" | "right";
   className?: string;
 }) {
   return (
     <div className={className}>
-      <div className="label text-[14px] text-muted">
+      <div className="label flex items-center gap-1.5 text-[14px] text-muted">
         <Caps>{label}</Caps>
+        {info && <InfoTip align={infoAlign}>{info}</InfoTip>}
       </div>
       <div className="tabular mt-1 font-display text-[26px] leading-tight">{value}</div>
-      {hint && <div className="mt-1 text-[13px] text-muted">{hint}</div>}
     </div>
   );
 }
