@@ -1,0 +1,20 @@
+{
+  "network": "testnet",
+  "rpcUrl": "https://soroban-testnet.stellar.org",
+  "horizonUrl": "https://horizon-testnet.stellar.org",
+  "networkPassphrase": "Test SDF Network ; September 2015",
+  "deployedAt": "2026-10-22T00:43:13Z",
+  "admin": "GA44WBPB5A7BVCQI6P7YTFU46HZ5EO2VURYJBB3HTC3KQUHA3QX25PZP",
+  "assets": {
+    "usdt0": { "code": "USDT0", "issuer": "GB3CRPHKNHORDM5JUOINSEWSW5KG523HBTU3QVN27QDPFFDIZSITQDXI", "contract": "CDF5YTD2L5NC2FMZDEAHNSZHNTQPJDMG4JGDNWS625JB4PDLR5UF4SLC", "mock": true },
+    "nusdt0": { "code": "nUSDT0", "issuer": "GD4TUYJKZ37PUCLWUQXHCMTFJCKHIIAU5QDOFS7SIPHXYGZSY7T4JHCJ", "contract": "CD3VOXPH5F2MHIPH6F4IJ6U7GQDAO7BPCRNAMXPZUGHL3CIFD4MGIXXP" }
+  },
+  "contracts": {
+    "vault": "CBL625ONM5QCDPYCZXNWSAWUCECTMUT5HH2HRHZWC6INBJHQYU6PR7KJ",
+    "strategyXoxno": "CBIEBF2O7MN25SDPTWX7YGDWBV43TEATYIQGDPVNMQRD66DNRN2UDKQC",
+    "lending": "CCD25MKFMAJ3X4VTJNE7N257IP347NVTFYQL5GYSLVTQW7MIRU32E3K7",
+    "oracle": "CBRYNTQXPJDJQ3RHLAKAOVUM4BOKWLTQR4LGRHSKXEKXIXXJ3ATKGDAI"
+  },
+  "lending": { "mock": true, "hubId": 1, "spokeId": 1, "aprBps": 76 },
+  "vault": { "feeBps": 1000, "bufferBps": 500, "targetBps": 9500 }
+}
