@@ -4,6 +4,8 @@ import { Badge, Card, SectionHeading, Skeleton } from "@/components/ui/Card";
 import { TornEdge } from "@/components/zine/Torn";
 import { type YieldSource, useApi } from "@/lib/api";
 import { formatPct, formatUsd } from "@/lib/format";
+import { Reveal, Stagger } from "@/components/motion/Reveal";
+import { CountUp } from "@/components/motion/CountUp";
 
 export function YieldSources() {
   const { data } = useApi<YieldSource[]>("/api/mainnet/yields", 600_000);
@@ -12,12 +14,14 @@ export function YieldSources() {
   return (
     <section className="grain bg-ocean">
       <div className="mx-auto max-w-7xl px-5 py-20 sm:px-8 sm:py-28">
-        <SectionHeading eyebrow="Where the yield comes from" title="Every basis point, accounted for.">
-          Made inside Stellar: no bridge, no off-chain desk. Today&apos;s live mainnet rates, shown as they are. A realistic
-          vault yield is about 0.4–0.8% a year while USDT0 demand on Stellar is still young.
-        </SectionHeading>
+        <Reveal>
+          <SectionHeading eyebrow="Where the yield comes from" title="Every basis point, accounted for.">
+            Made inside Stellar: no bridge, no off-chain desk. Today&apos;s live mainnet rates, shown as they are. A realistic
+            vault yield is about 0.4–0.8% a year while USDT0 demand on Stellar is still young.
+          </SectionHeading>
+        </Reveal>
 
-        <div className="mt-14 grid gap-8 md:grid-cols-2">
+        <Stagger className="mt-14 grid gap-8 md:grid-cols-2">
           {(data ?? [null, null]).map((source, i) => (
             <Card key={source?.id ?? i} className="p-7" style={{ transform: `rotate(${i ? 0.8 : -0.8}deg)` }}>
               {source ? (
@@ -30,7 +34,7 @@ export function YieldSources() {
                     {source.status === "live" ? <Badge tone="good">Live strategy</Badge> : <Badge tone="clown">Next</Badge>}
                   </div>
                   <div className="tabular mt-6 font-display text-[64px] leading-none">
-                    {formatPct(source.apy)}
+                    <CountUp value={source.apy} format={formatPct} />
                     <span className="label ml-2 text-[18px] text-muted">APY</span>
                   </div>
                   <div className="mt-6 space-y-3">
@@ -60,7 +64,7 @@ export function YieldSources() {
               )}
             </Card>
           ))}
-        </div>
+        </Stagger>
       </div>
       <TornEdge to="var(--navy)" seed={19} />
     </section>
