@@ -22,7 +22,8 @@ function FinEdge({ d, clip }: { d: string; clip: string }) {
   );
 }
 
-function Umbrella() {
+/** Lily-pad umbrella; its stem ends at (244, 176) in fish coordinates. */
+export function Umbrella() {
   return (
     <g strokeLinecap="round" strokeLinejoin="round">
       <path d="M244 176 C238 110 226 30 212 -44" fill="none" stroke={INK} strokeWidth={14} />
