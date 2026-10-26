@@ -14,3 +14,7 @@ backend/data/
 
 # Filled-in SQL with secrets
 supabase/*.local.sql
+
+# Submission form answers: never committed
+basvuru.txt
+demovideo.txt
