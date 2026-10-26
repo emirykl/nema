@@ -98,11 +98,32 @@ export const previewWithdraw = (shares: bigint) => simulate<bigint>(vault.call("
 
 const withSlippage = (amount: bigint) => (amount * (10_000n - SLIPPAGE_BPS)) / 10_000n;
 
+/**
+ * Vault state can move between simulation and the user's signature (keeper
+ * rebalances, interest accrual), and a withdrawal that unwinds a strategy then
+ * needs more CPU and write bytes than simulated. Unused fee is refunded.
+ */
+const RESOURCE_MARGIN = 1.3;
+const FEE_HEADROOM_STROOPS = 100_000;
+
+function withHeadroom(sim: rpc.Api.SimulateTransactionSuccessResponse) {
+  const up = (n: number) => Math.ceil(n * RESOURCE_MARGIN);
+  const { resources } = sim.transactionData.build();
+  const fee = up(Number(sim.minResourceFee)) + FEE_HEADROOM_STROOPS;
+  sim.transactionData
+    .setResources(up(Number(resources.instructions)), up(Number(resources.diskReadBytes)), up(Number(resources.writeBytes)))
+    .setResourceFee(fee);
+  sim.minResourceFee = String(fee);
+  return sim;
+}
+
 async function prepare(source: string, op: xdr.Operation): Promise<string> {
   const account = await soroban.getAccount(source);
   const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase }).addOperation(op).setTimeout(120).build();
   try {
-    return (await soroban.prepareTransaction(tx)).toXDR();
+    const sim = await soroban.simulateTransaction(tx);
+    if (!rpc.Api.isSimulationSuccess(sim)) throw new Error(rpc.Api.isSimulationError(sim) ? sim.error : "Simulation failed");
+    return rpc.assembleTransaction(tx, withHeadroom(sim)).build().toXDR();
   } catch (err) {
     throw new Error(readableError(err));
   }
